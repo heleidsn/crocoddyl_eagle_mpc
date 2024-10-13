@@ -138,6 +138,12 @@ class SolverDDP : public SolverAbstract {
    */
   virtual void forwardPass(const double stepLength);
 
+  enum StoppingType { StopCriteriaQuNorm, StopCriteriaCostReduction };
+  virtual double stoppingCriteriaQuNorm();
+  virtual double stoppingCriteriaCostReduction();
+  virtual bool stoppingTest();
+  virtual bool stoppingTestFeasible();
+
   /**
    * @brief Compute the linear-quadratic approximation of the control
    * Hamiltonian function
@@ -343,6 +349,8 @@ class SolverDDP : public SolverAbstract {
    */
   void set_th_grad(const double th_grad);
 
+  virtual void set_stoppingCriteria(SolverDDP::StoppingType stop_type);
+
  protected:
   double reg_incfactor_;  //!< Regularization factor used to increase the
                           //!< damping value
@@ -351,6 +359,7 @@ class SolverDDP : public SolverAbstract {
   double reg_min_;        //!< Minimum allowed regularization value
   double reg_max_;        //!< Maximum allowed regularization value
 
+  double cost_prev_;
   double cost_try_;  //!< Total cost computed by line-search procedure
   std::vector<Eigen::VectorXd>
       xs_try_;  //!< State trajectory computed by line-search procedure
@@ -400,6 +409,9 @@ class SolverDDP : public SolverAbstract {
       th_stepdec_;  //!< Step-length threshold used to decrease regularization
   double
       th_stepinc_;  //!< Step-length threshold used to increase regularization
+
+  std::function<double(void)> stopping_criteria_;
+  std::function<bool(void)> stopping_test_;
 };
 
 }  // namespace crocoddyl

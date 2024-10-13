@@ -94,6 +94,9 @@ template <typename Scalar>
 class ActivationModelQuadTpl;
 
 template <typename Scalar>
+class ActivationModelQuadFullTpl;
+
+template <typename Scalar>
 class ActivationModelQuadFlatExpTpl;
 template <typename Scalar>
 struct ActivationDataQuadFlatExpTpl;
@@ -225,6 +228,10 @@ class CostModelResidualTpl;
 template <typename Scalar>
 struct CostDataResidualTpl;
 
+// // For eagleMPC
+// template <typename Scalar>
+// class CostModelControlTpl;
+
 // constraint
 template <typename Scalar>
 class ConstraintModelAbstractTpl;
@@ -333,6 +340,7 @@ typedef ActivationDataQuadraticBarrierTpl<double>
     ActivationDataQuadraticBarrier;
 typedef ActivationModelQuadraticBarrierTpl<double>
     ActivationModelQuadraticBarrier;
+typedef ActivationModelQuadFullTpl<double> ActivationModelQuadFull;
 typedef ActivationBoundsTpl<double> ActivationBounds;
 typedef ActivationModelWeightedQuadraticBarrierTpl<double>
     ActivationModelWeightedQuadraticBarrier;

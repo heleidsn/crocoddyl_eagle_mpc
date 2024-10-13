@@ -121,6 +121,16 @@ template <typename Scalar>
 struct ResidualDataControlGravTpl;
 
 template <typename Scalar>
+class ResidualModelFrameAxisAlignmentTpl;
+template <typename Scalar>
+struct ResidualDataFrameAxisAlignmentTpl;
+
+template <typename Scalar>
+class ResidualModelFrameCollisionTpl;
+template <typename Scalar>
+struct ResidualDataFrameCollisionTpl;
+
+template <typename Scalar>
 class ResidualModelFramePlacementTpl;
 template <typename Scalar>
 struct ResidualDataFramePlacementTpl;
@@ -156,6 +166,13 @@ class ResidualModelPairCollisionTpl;
 template <typename Scalar>
 struct ResidualDataPairCollisionTpl;
 #endif
+
+// // TODO: new crocoddyl does not use Cost
+// // cost
+// template <typename Scalar>
+// class CostModelFrameAxisAlignmentTpl;
+// template <typename Scalar>
+// using CostDataFrameAxisAlignmentTpl = CostDataResidualTpl<Scalar>;
 
 // impulse
 template <typename Scalar>
@@ -321,6 +338,12 @@ typedef ResidualDataContactControlGravTpl<double>
     ResidualDataContactControlGrav;
 typedef ResidualModelControlGravTpl<double> ResidualModelControlGrav;
 typedef ResidualDataControlGravTpl<double> ResidualDataControlGrav;
+typedef ResidualModelFrameAxisAlignmentTpl<double>
+    ResidualModelFrameAxisAlignment;
+typedef ResidualDataFrameAxisAlignmentTpl<double>
+    ResidualDataFrameAxisAlignment;
+typedef ResidualModelFrameCollisionTpl<double> ResidualModelFrameCollision;
+typedef ResidualDataFrameCollisionTpl<double> ResidualDataFrameCollision;
 typedef ResidualModelFramePlacementTpl<double> ResidualModelFramePlacement;
 typedef ResidualDataFramePlacementTpl<double> ResidualDataFramePlacement;
 typedef ResidualModelFrameRotationTpl<double> ResidualModelFrameRotation;

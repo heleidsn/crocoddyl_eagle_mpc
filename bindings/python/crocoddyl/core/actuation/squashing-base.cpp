@@ -15,7 +15,7 @@ namespace crocoddyl {
 namespace python {
 
 void exposeSquashingAbstract() {
-  bp::register_ptr_to_python<boost::shared_ptr<SquashingModelAbstract> >();
+  bp::register_ptr_to_python<boost::shared_ptr<SquashingModelAbstract>>();
 
   bp::class_<SquashingModelAbstract_wrap, boost::noncopyable>(
       "SquashingModelAbstract",
@@ -61,9 +61,21 @@ void exposeSquashingAbstract() {
                             bp::return_value_policy<bp::return_by_value>()),
           bp::make_function(&SquashingModelAbstract_wrap::set_s_ub),
           "upper bound for the active zone of the squashing function")
+      .add_property(
+          "u_lb",
+          bp::make_function(&SquashingModelAbstract_wrap::get_u_lb,
+                            bp::return_value_policy<bp::return_by_value>()),
+          bp::make_function(&SquashingModelAbstract_wrap::set_u_lb),
+          "lower bound for the active zone of the squashing function")
+      .add_property(
+          "u_ub",
+          bp::make_function(&SquashingModelAbstract_wrap::get_u_ub,
+                            bp::return_value_policy<bp::return_by_value>()),
+          bp::make_function(&SquashingModelAbstract_wrap::set_u_ub),
+          "upper bound for the active zone of the squashing function")
       .def(CopyableVisitor<SquashingModelAbstract_wrap>());
 
-  bp::register_ptr_to_python<boost::shared_ptr<SquashingDataAbstract> >();
+  bp::register_ptr_to_python<boost::shared_ptr<SquashingDataAbstract>>();
 
   bp::class_<SquashingDataAbstract>(
       "SquashingDataAbstract",
@@ -73,7 +85,7 @@ void exposeSquashingAbstract() {
       "user-defined squashing model. The squashing data is typically allocated "
       "once per running.\n"
       "model.createData().",
-      bp::init<SquashingModelAbstract*>(
+      bp::init<SquashingModelAbstract *>(
           bp::args("self", "model"),
           "Create common data shared between squashing models. \n\n"
           "The squashing data uses the model in order to first process it. \n"

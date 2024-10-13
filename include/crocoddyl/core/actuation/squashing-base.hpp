@@ -31,27 +31,32 @@ class SquashingModelAbstractTpl {
 
   SquashingModelAbstractTpl(const std::size_t ns) : ns_(ns) {
     if (ns_ == 0) {
-      throw_pretty("Invalid argument: "
-                   << "ns cannot be zero");
+      throw_pretty("Invalid argument: " << "ns cannot be zero");
     }
   };
   virtual ~SquashingModelAbstractTpl() {};
 
-  virtual void calc(const boost::shared_ptr<SquashingDataAbstract>& data,
-                    const Eigen::Ref<const VectorXs>& s) = 0;
-  virtual void calcDiff(const boost::shared_ptr<SquashingDataAbstract>& data,
-                        const Eigen::Ref<const VectorXs>& s) = 0;
+  virtual void calc(const boost::shared_ptr<SquashingDataAbstract> &data,
+                    const Eigen::Ref<const VectorXs> &s) = 0;
+  virtual void calcDiff(const boost::shared_ptr<SquashingDataAbstract> &data,
+                        const Eigen::Ref<const VectorXs> &s) = 0;
   virtual boost::shared_ptr<SquashingDataAbstract> createData() {
     return boost::allocate_shared<SquashingDataAbstract>(
         Eigen::aligned_allocator<SquashingDataAbstract>(), this);
   }
 
   std::size_t get_ns() const { return ns_; };
-  const VectorXs& get_s_lb() const { return s_lb_; };
-  const VectorXs& get_s_ub() const { return s_ub_; };
+  const VectorXs &get_s_lb() const { return s_lb_; };
+  const VectorXs &get_s_ub() const { return s_ub_; };
 
-  void set_s_lb(const VectorXs& s_lb) { s_lb_ = s_lb; };
-  void set_s_ub(const VectorXs& s_ub) { s_ub_ = s_ub; };
+  const VectorXs &get_u_lb() const { return u_lb_; };
+  const VectorXs &get_u_ub() const { return u_ub_; };
+
+  void set_s_lb(const VectorXs &s_lb) { s_lb_ = s_lb; };
+  void set_s_ub(const VectorXs &s_ub) { s_ub_ = s_ub; };
+
+  void set_u_lb(const VectorXs &u_lb) { u_lb_ = u_lb; };
+  void set_u_ub(const VectorXs &u_ub) { u_ub_ = u_ub; };
 
  protected:
   std::size_t ns_;
@@ -73,7 +78,7 @@ struct SquashingDataAbstractTpl {
   typedef typename MathBase::MatrixXs MatrixXs;
 
   template <template <typename Scalar> class Model>
-  explicit SquashingDataAbstractTpl(Model<Scalar>* const model)
+  explicit SquashingDataAbstractTpl(Model<Scalar> *const model)
       : u(model->get_ns()), du_ds(model->get_ns(), model->get_ns()) {
     u.setZero();
     du_ds.setZero();

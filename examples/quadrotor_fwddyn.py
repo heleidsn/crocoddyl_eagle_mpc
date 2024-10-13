@@ -87,7 +87,8 @@ terminalModel = crocoddyl.IntegratedActionModelEuler(
 # Creating the shooting problem and the solver
 T = 33
 problem = crocoddyl.ShootingProblem(
-    np.concatenate([hector.q0, np.zeros(state.nv)]), [runningModel] * T, terminalModel
+    np.concatenate([hector.q0, np.zeros(state.nv)]), [
+        runningModel] * T, terminalModel
 )
 solver = crocoddyl.SolverFDDP(problem)
 if WITHPLOT:
@@ -119,7 +120,8 @@ if WITHDISPLAY:
         gepetto.corbaserver.Client()
         cameraTF = [-0.03, 4.4, 2.3, -0.02, 0.56, 0.83, -0.03]
         display = crocoddyl.GepettoDisplay(hector, 4, 4, cameraTF, floor=False)
-        hector.viewer.gui.addXYZaxis("world/wp", [1.0, 0.0, 0.0, 1.0], 0.03, 0.5)
+        hector.viewer.gui.addXYZaxis(
+            "world/wp", [1.0, 0.0, 0.0, 1.0], 0.03, 0.5)
         hector.viewer.gui.applyConfiguration(
             "world/wp",
             [
@@ -130,8 +132,9 @@ if WITHDISPLAY:
                 target_quat[3],
             ],
         )
-    except Exception:
-        display = crocoddyl.MeshcatDisplay(hector)
+    except Exception as e:
+        # display = crocoddyl.MeshcatDisplay(hector)
+        print("Failed to load gepetto: {}".format(e))
     display.rate = -1
     display.freq = 1
     while True:

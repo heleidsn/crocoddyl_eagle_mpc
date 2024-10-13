@@ -21,9 +21,13 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(SolverFDDP_computeDirections,
                                        SolverDDP::computeDirection, 0, 1)
 
 void exposeSolverFDDP() {
-  bp::register_ptr_to_python<boost::shared_ptr<SolverFDDP> >();
+  bp::register_ptr_to_python<boost::shared_ptr<SolverFDDP>>();
 
-  bp::class_<SolverFDDP, bp::bases<SolverDDP> >(
+  bp::enum_<SolverFDDP::StoppingTestType>("StoppingTestType")
+      .value("StopTestFeasible", SolverFDDP::StopTestFeasible)
+      .value("StopTestGaps", SolverFDDP::StopTestGaps);
+
+  bp::class_<SolverFDDP, bp::bases<SolverDDP>>(
       "SolverFDDP",
       "Feasibility-driven DDP (FDDP) solver.\n\n"
       "The FDDP solver computes an optimal trajectory and control commands by "
@@ -36,7 +40,7 @@ void exposeSolverFDDP() {
       "along a tuple of optimized control commands U*.\n"
       ":param shootingProblem: shooting problem (list of action models along "
       "trajectory.)",
-      bp::init<boost::shared_ptr<ShootingProblem> >(
+      bp::init<boost::shared_ptr<ShootingProblem>>(
           bp::args("self", "problem"),
           "Initialize the vector dimension.\n\n"
           ":param problem: shooting problem."))
@@ -67,6 +71,9 @@ void exposeSolverFDDP() {
                "1e-9).\n"
                ":returns the optimal trajectory xopt, uopt and a boolean that "
                "describes if convergence was reached."))
+      .def("setStoppingTest", &SolverFDDP::set_stoppingTest,
+           bp::args("self, stopTestType"),
+           "Sets the stopping test that will be used by the solver.")
       .def("updateExpectedImprovement", &SolverFDDP::updateExpectedImprovement,
            bp::return_value_policy<bp::copy_const_reference>(),
            bp::args("self"), "Update the expected improvement model\n\n")

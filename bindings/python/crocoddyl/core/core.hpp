@@ -55,6 +55,7 @@ void exposeActionUnicycle();
 void exposeActionLQR();
 void exposeDifferentialActionLQR();
 void exposeActivationQuad();
+void exposeActivationQuadFull();
 void exposeActivationQuadFlatExp();
 void exposeActivationQuadFlatLog();
 void exposeActivationWeightedQuad();

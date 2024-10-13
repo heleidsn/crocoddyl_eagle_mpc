@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 import pinocchio
+import pinocchio.visualize
 
 from .libcrocoddyl_pywrap import *  # noqa: F403
 from .libcrocoddyl_pywrap import __raw_version__, __version__  # noqa: F401
@@ -34,10 +35,18 @@ class DisplayAbstract(ABC):
         self.rate = rate
         self.freq = freq
         # Visual properties
-        self.frameTrajGroup = "world/robot/frame_trajectory"
-        self.forceGroup = "world/robot/contact_forces"
-        self.thrustGroup = "world/robot/thrust"
-        self.frictionGroup = "world/robot/friction_cone"
+        # self.frameTrajGroup = "world/robot/frame_trajectory"
+        # self.forceGroup = "world/robot/contact_forces"
+        # self.thrustGroup = "world/robot/thrust"
+        # self.frictionGroup = "world/robot/friction_cone"
+
+        # PepMS modifications
+        self.robotName = self.robot.model.name
+        self.frameTrajGroup = "world/" + self.robotName + "/frame_trajectory"
+        self.forceGroup = "world/" + self.robotName + "/contact_forces"
+        self.thrustGroup = "world/" + self.robotName + "/thrust"
+        self.frictionGroup = "world/" + self.robotName + "/friction_cone"
+
         self.forceRadius = 0.015
         self.forceLength = 0.5
         self.forceColor = [1.0, 0.0, 1.0, 1.0]
@@ -63,7 +72,8 @@ class DisplayAbstract(ABC):
         fs = self.getForceTrajectoryFromSolver(solver)
         ps = self.getFrameTrajectoryFromSolver(solver)
         rs = self.getThrustTrajectoryFromSolver(solver)
-        models = [*solver.problem.runningModels.tolist(), solver.problem.terminalModel]
+        models = [*solver.problem.runningModels.tolist(),
+                  solver.problem.terminalModel]
         dts = [m.dt if hasattr(m, "differential") else 0.0 for m in models]
         self.display(solver.xs, dts, rs, ps, [], fs, [], dts, factor)
 
@@ -109,8 +119,10 @@ class DisplayAbstract(ABC):
     def init(self, solver):
         frameNames, thrusters = [], []
         self.frameTrajNames = []
-        models = [*solver.problem.runningModels.tolist(), solver.problem.terminalModel]
-        datas = [*solver.problem.runningDatas.tolist(), solver.problem.terminalData]
+        models = [*solver.problem.runningModels.tolist(),
+                  solver.problem.terminalModel]
+        datas = [*solver.problem.runningDatas.tolist(),
+                 solver.problem.terminalData]
         for i, data in enumerate(datas):
             model = models[i]
             if self._hasContacts(data):
@@ -184,27 +196,33 @@ class DisplayAbstract(ABC):
         for i in range(solver.problem.T):
             data = solver.problem.runningDatas[i]
             if hasattr(data, "differential"):
-                us.append(data.differential.multibody.actuation.tau[self._nv_root :])
+                us.append(
+                    data.differential.multibody.actuation.tau[self._nv_root:])
             elif isinstance(data, ActionDataImpulseFwdDynamics):
                 us.append(
-                    np.zeros(solver.problem.runningModels[i].state.nv - self._nv_root)
+                    np.zeros(
+                        solver.problem.runningModels[i].state.nv - self._nv_root)
                 )
             else:
-                us.append(solver.us[i][self._nv_root :])
+                us.append(solver.us[i][self._nv_root:])
         nu = solver.problem.runningModels[i].state.nv - self._nv_root
-        us.append(np.zeros(nu + 1)[1:])  # TODO: temporal patch to fix bug in pybind11
+        # TODO: temporal patch to fix bug in pybind11
+        us.append(np.zeros(nu + 1)[1:])
         return us
 
     def getForceTrajectoryFromSolver(self, solver):
         if len(self.frameTrajNames) == 0:
             return None
         fs = []
-        models = [*solver.problem.runningModels.tolist(), solver.problem.terminalModel]
-        datas = [*solver.problem.runningDatas.tolist(), solver.problem.terminalData]
+        models = [*solver.problem.runningModels.tolist(),
+                  solver.problem.terminalModel]
+        datas = [*solver.problem.runningDatas.tolist(),
+                 solver.problem.terminalData]
         for i, data in enumerate(datas):
             model = models[i]
             if self._hasContacts(data):
-                contact_model, contact_data = self._getContactModelAndData(model, data)
+                contact_model, contact_data = self._getContactModelAndData(
+                    model, data)
                 cost_model = self._getCostModel(model)
                 fs.append(
                     self._getForceInformation(
@@ -249,8 +267,10 @@ class DisplayAbstract(ABC):
         if len(self.frameTrajNames) == 0:
             return None
         ps = {fr: [] for fr in self.frameTrajNames}
-        models = [*solver.problem.runningModels.tolist(), solver.problem.terminalModel]
-        datas = [*solver.problem.runningDatas.tolist(), solver.problem.terminalData]
+        models = [*solver.problem.runningModels.tolist(),
+                  solver.problem.terminalModel]
+        datas = [*solver.problem.runningDatas.tolist(),
+                 solver.problem.terminalData]
         for key, p in ps.items():
             frameId = int(key)
             for i, data in enumerate(datas):
@@ -384,6 +404,15 @@ class GepettoDisplay(DisplayAbstract):
         if frameNames is not None:
             print("Deprecated. Do not pass frameNames")
 
+        viz = pinocchio.visualize.GepettoVisualizer(
+            model=self.robot.model,
+            collision_model=self.robot.collision_model,
+            visual_model=self.robot.visual_model,
+        )
+        robot.setVisualizer(viz)
+
+        self.frameTrajNames = []
+
         # Visuals properties
         self.fullVisibility = visibility
         self.floorGroup = "world/floor"
@@ -394,7 +423,8 @@ class GepettoDisplay(DisplayAbstract):
         self._addRobot()
         self._setBackground()
         if cameraTF is not None:
-            self.robot.viewer.gui.setCameraTransform(self.robot.viz.windowID, cameraTF)
+            self.robot.viewer.gui.setCameraTransform(
+                self.robot.viz.windowID, cameraTF)
         if floor:
             self._addFloor()
         self.robot.viewer.gui.createGroup(self.forceGroup)
@@ -406,7 +436,7 @@ class GepettoDisplay(DisplayAbstract):
         self._addFrictionCones()
 
     def setVisibility(self, name, status):
-        self.robot.viewer[name].set_property("visible", status)
+        # self.robot.viewer[name].set_property("visible", status)
         if status:
             self.robot.viewer.gui.setVisibility(name, "ON")
         else:
@@ -414,13 +444,15 @@ class GepettoDisplay(DisplayAbstract):
 
     def displayFramePoses(self, ps):
         for key, p in ps.items():
-            self.robot.viewer.gui.setCurvePoints(self.frameTrajGroup + "/" + key, p)
+            self.robot.viewer.gui.setCurvePoints(
+                self.frameTrajGroup + "/" + key, p)
 
     def displayContactForce(self, f):
         key, pose, wrench = f["key"], f["oMf"], f["f"]
         forceMagnitud = np.linalg.norm(wrench.linear) / self.totalWeight
         R = rotationMatrixFromTwoVectors(self.x_axis, wrench.linear)
-        forcePose = pinocchio.SE3ToXYZQUATtuple(pinocchio.SE3(R, pose.translation))
+        forcePose = pinocchio.SE3ToXYZQUATtuple(
+            pinocchio.SE3(R, pose.translation))
         forceName = self.forceGroup + "/" + key
         self.robot.viewer.gui.applyConfiguration(forceName, forcePose)
         self.robot.viewer.gui.setVector3Property(
@@ -430,9 +462,15 @@ class GepettoDisplay(DisplayAbstract):
 
     def displayThrustForce(self, f):
         key, pose, thrust = f["key"], f["oMf"], f["f"]
-        wrench = pose.act(pinocchio.Force(np.array([0, 0, thrust]), np.zeros(3)))
+        wrench = pose.act(pinocchio.Force(
+            np.array([0, 0, thrust]), np.zeros(3)))
         forceMagnitud = np.linalg.norm(wrench.linear) / self.totalWeight
-        forcePose = pinocchio.SE3ToXYZQUATtuple(pinocchio.SE3(R, pose.translation))
+
+        # TODO: [boks] to fix Newly added rotation matrix
+        R = rotationMatrixFromTwoVectors(self.x_axis, wrench.linear)
+
+        forcePose = pinocchio.SE3ToXYZQUATtuple(
+            pinocchio.SE3(R, pose.translation))
         thrustName = self.thrustGroup + "/" + key
         self.robot.viewer.gui.applyConfiguration(thrustName, forcePose)
         self.robot.viewer.gui.setVector3Property(
@@ -454,19 +492,27 @@ class GepettoDisplay(DisplayAbstract):
     def _addRobot(self):
         # Spawn robot model
         self.robot.initViewer(windowName="crocoddyl", loadModel=False)
-        self.robot.loadViewerModel(rootNodeName="robot")
+        # self.robot.initViewer(loadModel=False)
+
+        # self.robot.loadViewerModel(rootNodeName="robot")
+        # PepMs
+        self.robot.loadViewerModel(rootNodeName=self.robotName)
 
     def _setBackground(self):
         # Set white background and floor
         window_id = self.robot.viewer.gui.getWindowID("crocoddyl")
-        self.robot.viewer.gui.setBackgroundColor1(window_id, self.backgroundColor)
-        self.robot.viewer.gui.setBackgroundColor2(window_id, self.backgroundColor)
+        self.robot.viewer.gui.setBackgroundColor1(
+            window_id, self.backgroundColor)
+        self.robot.viewer.gui.setBackgroundColor2(
+            window_id, self.backgroundColor)
 
     def _addFloor(self):
         self.robot.viewer.gui.createGroup(self.floorGroup)
         self.robot.viewer.gui.addFloor(self.floorGroup + "/flat")
-        self.robot.viewer.gui.setScale(self.floorGroup + "/flat", self.floorScale)
-        self.robot.viewer.gui.setColor(self.floorGroup + "/flat", self.floorColor)
+        self.robot.viewer.gui.setScale(
+            self.floorGroup + "/flat", self.floorScale)
+        self.robot.viewer.gui.setColor(
+            self.floorGroup + "/flat", self.floorColor)
         self.robot.viewer.gui.setLightingMode(self.floorGroup + "/flat", "OFF")
 
     def _addForceArrows(self):
@@ -477,7 +523,8 @@ class GepettoDisplay(DisplayAbstract):
             )
             self.robot.viewer.gui.setFloatProperty(forceName, "Alpha", 1.0)
         if self.fullVisibility:
-            self.robot.viewer.gui.setVisibility(self.forceGroup, "ALWAYS_ON_TOP")
+            self.robot.viewer.gui.setVisibility(
+                self.forceGroup, "ALWAYS_ON_TOP")
 
     def _addFrictionCones(self):
         for key in self.activeContacts:
@@ -491,7 +538,8 @@ class GepettoDisplay(DisplayAbstract):
                 [np.array([0.0, 0.0, 0.0]).tolist()] * 2,
                 self.frameTrajColor[key],
             )
-            self.robot.viewer.gui.setCurveLineWidth(frameName, self.frameTrajLineWidth)
+            self.robot.viewer.gui.setCurveLineWidth(
+                frameName, self.frameTrajLineWidth)
             if self.fullVisibility:
                 self.robot.viewer.gui.setVisibility(frameName, "ALWAYS_ON_TOP")
 
@@ -541,6 +589,19 @@ class GepettoDisplay(DisplayAbstract):
 
             self.robot.viewer.gui.deleteNode(coneGroup, True)
             self._createCone(coneName, self.frictionConeScale, mu)
+
+    def _addThrustArrows(self):
+        thrustColor = [1.0, 1.0, 0.0, 1.0]
+
+        for key in self.activeThrust:
+            thrustName = self.thrustGroup + "/" + key
+            self.robot.viewer.gui.addArrow(
+                thrustName, self.forceRadius, self.forceLength, thrustColor
+            )
+            self.robot.viewer.gui.setFloatProperty(thrustName, "Alpha", 1.0)
+        if self.fullVisibility:
+            self.robot.viewer.gui.setVisibility(
+                self.forceGroup, "ALWAYS_ON_TOP")
 
 
 class MeshcatDisplay(DisplayAbstract):
@@ -596,12 +657,14 @@ class MeshcatDisplay(DisplayAbstract):
         forceName = self.forceGroup + "/" + key
         self.robot.viewer[forceName].set_property("visible", False)
         self.robot.viewer[forceName].set_transform(forcePose.homogeneous)
-        self.robot.viewer[forceName].set_property("scale", [1.0, forceMagnitud, 1.0])
+        self.robot.viewer[forceName].set_property(
+            "scale", [1.0, forceMagnitud, 1.0])
         self.robot.viewer[forceName].set_property("visible", True)
 
     def displayThrustForce(self, f):
         key, pose, thrust = f["key"], f["oMf"], f["f"]
-        wrench = pose.act(pinocchio.Force(np.array([0, 0, thrust]), np.zeros(3)))
+        wrench = pose.act(pinocchio.Force(
+            np.array([0, 0, thrust]), np.zeros(3)))
         forceMagnitud = np.linalg.norm(wrench.linear) / self.totalWeight
         R = rotationMatrixFromTwoVectors(self.y_axis, wrench.linear)
         forcePose = pinocchio.SE3(
@@ -615,7 +678,8 @@ class MeshcatDisplay(DisplayAbstract):
         thrustName = self.thrustGroup + "/" + key
         self.robot.viewer[thrustName].set_property("visible", False)
         self.robot.viewer[thrustName].set_transform(forcePose.homogeneous)
-        self.robot.viewer[thrustName].set_property("scale", [1.0, forceMagnitud, 1.0])
+        self.robot.viewer[thrustName].set_property(
+            "scale", [1.0, forceMagnitud, 1.0])
         self.robot.viewer[thrustName].set_property("visible", True)
 
     def displayFrictionCone(self, f):
@@ -731,7 +795,8 @@ class RvizDisplay(DisplayAbstract):
             rospy.init_node("crocoddyl_display", anonymous=True)
             rospy.set_param("use_sim_time", True)
             rospy.set_param(
-                "robot_description", URDF.from_xml_file(robot.urdf).to_xml_string()
+                "robot_description", URDF.from_xml_file(
+                    robot.urdf).to_xml_string()
             )  # TODO: hard code robot.urdf because we cannot convert a Pinocchio model into an URDF
             filename = os.path.join(
                 os.path.dirname(
@@ -742,7 +807,8 @@ class RvizDisplay(DisplayAbstract):
             rviz_args = [
                 os.path.join(
                     os.path.dirname(
-                        os.path.abspath(inspect.getfile(inspect.currentframe()))
+                        os.path.abspath(inspect.getfile(
+                            inspect.currentframe()))
                     ),
                     "crocoddyl.launch",
                 ),
@@ -783,7 +849,8 @@ class RvizDisplay(DisplayAbstract):
         xs = solver.xs
         us = self.getJointTorquesTrajectoryFromSolver(solver)
         dts = self.getDurationSequenceFromSolver(solver)
-        models = [*solver.problem.runningModels.tolist(), solver.problem.terminalModel]
+        models = [*solver.problem.runningModels.tolist(),
+                  solver.problem.terminalModel]
         dts = [m.dt if hasattr(m, "differential") else 0.0 for m in models]
         ps, pds = self.getFrameTrajectoryFromSolver(solver)
         fs, ss = self.getForceTrajectoryFromSolver(solver)
@@ -812,7 +879,8 @@ class RvizDisplay(DisplayAbstract):
 
     def getFrameTrajectoryFromSolver(self, solver):
         ps, pds = [], []
-        datas = [*solver.problem.runningDatas.tolist(), solver.problem.runningDatas[-1]]
+        datas = [*solver.problem.runningDatas.tolist(),
+                 solver.problem.runningDatas[-1]]
         for i, data in enumerate(datas):
             if self._hasContacts(data):
                 pinocchio_data = self._getPinocchioData(data)
@@ -826,7 +894,8 @@ class RvizDisplay(DisplayAbstract):
             *solver.problem.runningModels.tolist(),
             solver.problem.runningModels[-1],
         ]
-        datas = [*solver.problem.runningDatas.tolist(), solver.problem.runningDatas[-1]]
+        datas = [*solver.problem.runningDatas.tolist(),
+                 solver.problem.runningDatas[-1]]
         for i, data in enumerate(datas):
             model = models[i]
             if self._hasContacts(data):
@@ -876,7 +945,8 @@ class RvizDisplay(DisplayAbstract):
         for frame in self.frameTrajNames:
             frame_id = int(frame)
             name = self.robot.model.frames[frame_id].name
-            pinocchio.updateFramePlacement(self.robot.model, pinocchio_data, frame_id)
+            pinocchio.updateFramePlacement(
+                self.robot.model, pinocchio_data, frame_id)
             popt[name] = pinocchio_data.oMf[frame_id]
         return popt
 

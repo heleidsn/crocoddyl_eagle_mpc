@@ -21,10 +21,13 @@ SolverDDP::SolverDDP(boost::shared_ptr<ShootingProblem> problem)
       reg_decfactor_(10.),
       reg_min_(1e-9),
       reg_max_(1e9),
+      cost_prev_(0.),
       cost_try_(0.),
       th_grad_(1e-12),
       th_stepdec_(0.5),
       th_stepinc_(0.01) {
+  stopping_criteria_ = std::bind(&SolverDDP::stoppingCriteriaQuNorm, this);
+  stopping_test_ = std::bind(&SolverDDP::stoppingTestFeasible, this);
   allocateData();
 
   const std::size_t n_alphas = 10;
@@ -99,6 +102,7 @@ bool SolverDDP::solve(const std::vector<Eigen::VectorXd>& init_xs,
             dV_ > th_acceptstep_ * dVexp_) {
           was_feasible_ = is_feasible_;
           setCandidate(xs_try_, us_try_, true);
+          cost_prev_ = cost_;
           cost_ = cost_try_;
           recalcDiff = true;
           break;
@@ -124,8 +128,9 @@ bool SolverDDP::solve(const std::vector<Eigen::VectorXd>& init_xs,
       callback(*this);
     }
 
-    if (was_feasible_ && stop_ < th_stop_) {
-      STOP_PROFILER("SolverDDP::solve");
+    // if (was_feasible_ && stop_ < th_stop_) {
+    //   STOP_PROFILER("SolverDDP::solve");
+    if (stoppingTest()) {
       return true;
     }
   }
@@ -149,14 +154,43 @@ double SolverDDP::tryStep(const double steplength) {
   return cost_ - cost_try_;
 }
 
-double SolverDDP::stoppingCriteria() {
-  // This stopping criteria represents the expected reduction in the value
-  // function. If this reduction is less than a certain threshold, then the
-  // algorithm reaches the local minimum. For more details, see C. Mastalli et
-  // al. "Inverse-dynamics MPC via Nullspace Resolution".
-  stop_ = std::abs(d_[0] + 0.5 * d_[1]);
+// double SolverDDP::stoppingCriteria() {
+//   // This stopping criteria represents the expected reduction in the value
+//   // function. If this reduction is less than a certain threshold, then the
+//   // algorithm reaches the local minimum. For more details, see C. Mastalli
+//   et
+//   // al. "Inverse-dynamics MPC via Nullspace Resolution".
+//   stop_ = std::abs(d_[0] + 0.5 * d_[1]);
+//   return stop_;
+// }
+
+double SolverDDP::stoppingCriteriaQuNorm() {
+  stop_ = 0.;
+  const std::size_t T = this->problem_->get_T();
+  const std::vector<boost::shared_ptr<ActionModelAbstract> >& models =
+      problem_->get_runningModels();
+  for (std::size_t t = 0; t < T; ++t) {
+    const std::size_t nu = models[t]->get_nu();
+    if (nu != 0) {
+      stop_ += Qu_[t].squaredNorm();
+    }
+  }
   return stop_;
 }
+
+double SolverDDP::stoppingCriteriaCostReduction() {
+  stop_ = 0.;
+  stop_ = std::abs(cost_ - cost_prev_) / cost_;
+  return stop_;
+}
+
+double SolverDDP::stoppingCriteria() { return stopping_criteria_(); }
+
+bool SolverDDP::stoppingTestFeasible() {
+  return (was_feasible_ && stop_ < th_stop_);
+}
+
+bool SolverDDP::stoppingTest() { return stopping_test_(); }
 
 const Eigen::Vector2d& SolverDDP::expectedImprovement() {
   d_.fill(0);
@@ -519,24 +553,23 @@ const std::vector<Eigen::VectorXd>& SolverDDP::get_k() const { return k_; }
 
 void SolverDDP::set_reg_incfactor(const double regfactor) {
   if (regfactor <= 1.) {
-    throw_pretty("Invalid argument: "
-                 << "reg_incfactor value is higher than 1.");
+    throw_pretty(
+        "Invalid argument: " << "reg_incfactor value is higher than 1.");
   }
   reg_incfactor_ = regfactor;
 }
 
 void SolverDDP::set_reg_decfactor(const double regfactor) {
   if (regfactor <= 1.) {
-    throw_pretty("Invalid argument: "
-                 << "reg_decfactor value is higher than 1.");
+    throw_pretty(
+        "Invalid argument: " << "reg_decfactor value is higher than 1.");
   }
   reg_decfactor_ = regfactor;
 }
 
 void SolverDDP::set_regfactor(const double regfactor) {
   if (regfactor <= 1.) {
-    throw_pretty("Invalid argument: "
-                 << "regfactor value is higher than 1.");
+    throw_pretty("Invalid argument: " << "regfactor value is higher than 1.");
   }
   set_reg_incfactor(regfactor);
   set_reg_decfactor(regfactor);
@@ -544,32 +577,28 @@ void SolverDDP::set_regfactor(const double regfactor) {
 
 void SolverDDP::set_reg_min(const double regmin) {
   if (0. > regmin) {
-    throw_pretty("Invalid argument: "
-                 << "regmin value has to be positive.");
+    throw_pretty("Invalid argument: " << "regmin value has to be positive.");
   }
   reg_min_ = regmin;
 }
 
 void SolverDDP::set_regmin(const double regmin) {
   if (0. > regmin) {
-    throw_pretty("Invalid argument: "
-                 << "regmin value has to be positive.");
+    throw_pretty("Invalid argument: " << "regmin value has to be positive.");
   }
   reg_min_ = regmin;
 }
 
 void SolverDDP::set_reg_max(const double regmax) {
   if (0. > regmax) {
-    throw_pretty("Invalid argument: "
-                 << "regmax value has to be positive.");
+    throw_pretty("Invalid argument: " << "regmax value has to be positive.");
   }
   reg_max_ = regmax;
 }
 
 void SolverDDP::set_regmax(const double regmax) {
   if (0. > regmax) {
-    throw_pretty("Invalid argument: "
-                 << "regmax value has to be positive.");
+    throw_pretty("Invalid argument: " << "regmax value has to be positive.");
   }
   reg_max_ = regmax;
 }
@@ -582,12 +611,11 @@ void SolverDDP::set_alphas(const std::vector<double>& alphas) {
   for (std::size_t i = 1; i < alphas.size(); ++i) {
     double alpha = alphas[i];
     if (0. >= alpha) {
-      throw_pretty("Invalid argument: "
-                   << "alpha values has to be positive.");
+      throw_pretty("Invalid argument: " << "alpha values has to be positive.");
     }
     if (alpha >= prev_alpha) {
-      throw_pretty("Invalid argument: "
-                   << "alpha values are monotonously decreasing.");
+      throw_pretty(
+          "Invalid argument: " << "alpha values are monotonously decreasing.");
     }
     prev_alpha = alpha;
   }
@@ -596,26 +624,40 @@ void SolverDDP::set_alphas(const std::vector<double>& alphas) {
 
 void SolverDDP::set_th_stepdec(const double th_stepdec) {
   if (0. >= th_stepdec || th_stepdec > 1.) {
-    throw_pretty("Invalid argument: "
-                 << "th_stepdec value should between 0 and 1.");
+    throw_pretty(
+        "Invalid argument: " << "th_stepdec value should between 0 and 1.");
   }
   th_stepdec_ = th_stepdec;
 }
 
 void SolverDDP::set_th_stepinc(const double th_stepinc) {
   if (0. >= th_stepinc || th_stepinc > 1.) {
-    throw_pretty("Invalid argument: "
-                 << "th_stepinc value should between 0 and 1.");
+    throw_pretty(
+        "Invalid argument: " << "th_stepinc value should between 0 and 1.");
   }
   th_stepinc_ = th_stepinc;
 }
 
 void SolverDDP::set_th_grad(const double th_grad) {
   if (0. > th_grad) {
-    throw_pretty("Invalid argument: "
-                 << "th_grad value has to be positive.");
+    throw_pretty("Invalid argument: " << "th_grad value has to be positive.");
   }
   th_grad_ = th_grad;
+}
+
+void SolverDDP::set_stoppingCriteria(SolverDDP::StoppingType stop_type) {
+  switch (stop_type) {
+    case SolverDDP::StopCriteriaQuNorm:
+      stopping_criteria_ = std::bind(&SolverDDP::stoppingCriteriaQuNorm, this);
+      break;
+    case SolverDDP::StopCriteriaCostReduction:
+      stopping_criteria_ =
+          std::bind(&SolverDDP::stoppingCriteriaCostReduction, this);
+      break;
+    default:
+      stopping_criteria_ = std::bind(&SolverDDP::stoppingCriteriaQuNorm, this);
+      break;
+  }
 }
 
 }  // namespace crocoddyl

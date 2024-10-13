@@ -34,10 +34,10 @@ class ActivationModelAbstractTpl {
   explicit ActivationModelAbstractTpl(const std::size_t nr) : nr_(nr) {};
   virtual ~ActivationModelAbstractTpl() {};
 
-  virtual void calc(const boost::shared_ptr<ActivationDataAbstract>& data,
-                    const Eigen::Ref<const VectorXs>& r) = 0;
-  virtual void calcDiff(const boost::shared_ptr<ActivationDataAbstract>& data,
-                        const Eigen::Ref<const VectorXs>& r) = 0;
+  virtual void calc(const boost::shared_ptr<ActivationDataAbstract> &data,
+                    const Eigen::Ref<const VectorXs> &r) = 0;
+  virtual void calcDiff(const boost::shared_ptr<ActivationDataAbstract> &data,
+                        const Eigen::Ref<const VectorXs> &r) = 0;
   virtual boost::shared_ptr<ActivationDataAbstract> createData() {
     return boost::allocate_shared<ActivationDataAbstract>(
         Eigen::aligned_allocator<ActivationDataAbstract>(), this);
@@ -48,8 +48,8 @@ class ActivationModelAbstractTpl {
   /**
    * @brief Print information on the activation model
    */
-  friend std::ostream& operator<<(
-      std::ostream& os, const ActivationModelAbstractTpl<Scalar>& model) {
+  friend std::ostream &operator<<(
+      std::ostream &os, const ActivationModelAbstractTpl<Scalar> &model) {
     model.print(os);
     return os;
   }
@@ -59,7 +59,7 @@ class ActivationModelAbstractTpl {
    *
    * @param[out] os  Output stream object
    */
-  virtual void print(std::ostream& os) const {
+  virtual void print(std::ostream &os) const {
     os << boost::core::demangle(typeid(*this).name());
   }
 
@@ -78,25 +78,40 @@ struct ActivationDataAbstractTpl {
   typedef typename MathBase::DiagonalMatrixXs DiagonalMatrixXs;
 
   template <template <typename Scalar> class Activation>
-  explicit ActivationDataAbstractTpl(Activation<Scalar>* const activation)
+  explicit ActivationDataAbstractTpl(Activation<Scalar> *const activation)
       : a_value(Scalar(0.)),
+        //     Ar(VectorXs::Zero(activation->get_nr())),
+        //     Arr(DiagonalMatrixXs(activation->get_nr())) {
+        // Arr.setZero();
+        // }
+
         Ar(VectorXs::Zero(activation->get_nr())),
-        Arr(DiagonalMatrixXs(activation->get_nr())) {
-    Arr.setZero();
-  }
+        Arr(MatrixXs::Zero(activation->get_nr(), activation->get_nr())) {}
+
   virtual ~ActivationDataAbstractTpl() {}
 
   Scalar a_value;
   VectorXs Ar;
-  DiagonalMatrixXs Arr;
+  // DiagonalMatrixXs Arr;
+  MatrixXs Arr;
 
+  // static MatrixXs getHessianMatrix(const ActivationDataAbstractTpl<Scalar>
+  // &data)
+  // {
+  //     return data.Arr.diagonal().asDiagonal();
+  // }
+  // static void setHessianMatrix(ActivationDataAbstractTpl<Scalar> &data, const
+  // MatrixXs &Arr)
+  // {
+  //     data.Arr.diagonal() = Arr.diagonal();
+  // }
   static MatrixXs getHessianMatrix(
-      const ActivationDataAbstractTpl<Scalar>& data) {
-    return data.Arr.diagonal().asDiagonal();
+      const ActivationDataAbstractTpl<Scalar> &data) {
+    return data.Arr;
   }
-  static void setHessianMatrix(ActivationDataAbstractTpl<Scalar>& data,
-                               const MatrixXs& Arr) {
-    data.Arr.diagonal() = Arr.diagonal();
+  static void setHessianMatrix(ActivationDataAbstractTpl<Scalar> &data,
+                               const MatrixXs &Arr) {
+    data.Arr = Arr;
   }
 };
 

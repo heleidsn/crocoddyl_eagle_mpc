@@ -53,6 +53,7 @@ void exposeCore() {
   exposeActionLQR();
   exposeDifferentialActionLQR();
   exposeActivationQuad();
+  exposeActivationQuadFull();
   exposeActivationQuadFlatExp();
   exposeActivationQuadFlatLog();
   exposeActivationWeightedQuad();
